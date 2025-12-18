@@ -1,275 +1,237 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>F1 LIVE TIMING</title>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg: #000000;
-      --text: #ffffff;
-      --gray: #1a1a1a;
-      --row-height: 48px;
-    }
-
-    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Orbitron', 'Segoe UI', sans-serif; }
-
-    body {
-      background: var(--bg);
-      color: var(--text);
-      overflow: hidden;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 16px;
-    }
-
-    .timing-board {
-      width: 360px;
-      background: var(--gray);
-      border-radius: 8px;
-      padding: 12px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.5);
-      position: relative;
-    }
-
-    /* ШАПКА — точная стилизация F1 */
-    .lap-header {
-      background: linear-gradient(to bottom, #000, #111);
-      color: white;
-      text-align: center;
-      padding: 12px 0;
-      font-weight: 700;
-      font-size: 20px;
-      letter-spacing: 1px;
-      border-radius: 4px 4px 0 0;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .lap-header::before,
-    .lap-header::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: linear-gradient(to right, transparent, rgba(255,255,255,0.5), transparent);
-    }
-
-    .lap-header::after { opacity: 0.3; top: auto; bottom: 0; }
-
-    .lap-title {
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      margin-bottom: 4px;
-    }
-
-    .lap-counter {
-      font-size: 24px;
-      font-weight: 700;
-      letter-spacing: 1px;
-    }
-
-    .teams-container {
-      max-height: 600px;
-      overflow-y: auto;
-      padding: 8px 0;
-    }
-
-    .team-row {
-      display: flex;
-      align-items: center;
-      height: var(--row-height);
-      padding: 0 12px;
-      margin: 4px 0;
-      background: var(--gray);
-      border-radius: 4px;
-      transition: all 0.2s ease;
-    }
-
-    .position {
-      width: 40px;
-      height: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: white;
-      color: black;
-      font-weight: bold;
-      font-size: 20px;
-      border-radius: 4px;
-      margin-right: 8px;
-    }
-
-    .team-info {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding-left: 8px;
-    }
-
-    .team-name {
-      font-size: 16px;
-      font-weight: 500;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .points-change {
-      width: 60px;
-      text-align: right;
-      font-size: 16px;
-      font-weight: bold;
-      padding: 2px 6px;
-      border-radius: 4px;
-      background: rgba(255, 255, 255, 0.1);
-    }
-
-    .points-change.pos {
-      color: #4caf50;
-    }
-
-    .points-change.neg {
-      color: #f44336;
-    }
-
-    /* Пьедестал */
-    .rank-1 .position { background: #ffd700; color: #000; } /* Золото */
-    .rank-2 .position { background: #c0c0c0; color: #000; } /* Серебро */
-    .rank-3 .position { background: #cd7f32; color: #000; } /* Бронза */
-
-    /* Прокрутка */
-    .teams-container::-webkit-scrollbar {
-      width: 6px;
-    }
-    .teams-container::-webkit-scrollbar-thumb {
-      background: rgba(255,255,255,0.2);
-      border-radius: 3px;
-    }
-
-    /* Состояние загрузки */
-    .loading {
-      text-align: center;
-      padding: 20px;
-      color: #888;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>New Year's Grand Prix</title>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-<div class="timing-board">
-  <div class="lap-header">
-    <div class="lap-title">LAP</div>
-    <div class="lap-counter" id="lap-counter">— / —</div>
-  </div>
-  <div class="teams-container" id="teams-container">
-    <div class="loading">⏳ Подключение к боту...</div>
-  </div>
+<div class="scene">
+
+    <div class="bg-wrapper">
+
+        <!-- Фоны -->
+        <div class="stars-bg"></div>
+        <div class="header-bg"></div>
+
+        <div class="ranks-wrapper">
+            <div class="team-rank gold">01</div>
+            <div class="team-rank silver">02</div>
+            <div class="team-rank bronze">03</div>
+            <div class="team-rank">04</div>
+            <div class="team-rank">05</div>
+            <div class="team-rank">06</div>
+            <div class="team-rank">07</div>
+            <div class="team-rank">08</div>
+            <div class="team-rank">09</div>
+            <div class="team-rank">10</div>
+            <div class="team-rank">11</div>
+        </div>
+
+        <!-- Табло -->
+        <div class="board">
+
+            <!-- WILLIAMS -->
+            <div class="team-row">
+                    <div class="team-card team-williams">
+                        <div class="team-logo"></div>
+                        <div class="team-name">WILLIAMS</div>
+                        <div class="team-points">0</div>
+                    </div>
+                </div>
+
+            <!-- MERCEDES -->
+            <div class="team-row team-mercedes">
+                <div class="team-card team-mercedes">
+                    <div class="team-logo"></div>
+                    <div class="team-name">MERCEDES</div>
+                    <div class="team-points">87</div>
+                </div>
+            </div>
+
+            <!-- MCLAREN -->
+            <div class="team-row team-mclaren">
+                <div class="team-card team-mclaren">
+                    <div class="team-logo"></div>
+                    <div class="team-name">MCLAREN</div>
+                    <div class="team-points">87</div>
+                </div>
+            </div>
+
+            <!-- FERRARI -->
+            <div class="team-row team-ferrari">
+                <div class="team-card team-ferrari">
+                    <div class="team-logo"></div>
+                    <div class="team-name">FERRARI</div>
+                    <div class="team-points">87</div>
+                </div>
+            </div>
+
+            <!-- SITRAK -->
+            <div class="team-row team-sitrak">
+                <div class="team-card team-sitrak">
+                    <div class="team-logo"></div>
+                    <div class="team-name">SITRAK</div>
+                    <div class="team-points">87</div>
+                </div>
+            </div>
+
+            <!-- RED BULL -->
+            <div class="team-row team-redbull">
+                <div class="team-card team-redbull">
+                    <div class="team-logo"></div>
+                    <div class="team-name">RED BULL</div>
+                    <div class="team-points">87</div>
+                </div>
+            </div>
+
+            <!-- HOWO -->
+            <div class="team-row team-howo">
+                <div class="team-card team-howo">
+                    <div class="team-logo"></div>
+                    <div class="team-name">HOWO</div>
+                    <div class="team-points">87</div>
+                </div>
+            </div>
+
+            <!-- ASTON MARTIN -->
+            <div class="team-row team-astonmartin">
+                <div class="team-card team-astonmartin">
+                    <div class="team-logo"></div>
+                    <div class="team-name">ASTON MARTIN</div>
+                    <div class="team-points">87</div>
+                </div>
+            </div>
+
+            <!-- LADA -->
+            <div class="team-row team-lada">
+                <div class="team-card team-lada">
+                    <div class="team-logo"></div>
+                    <div class="team-name">LADA</div>
+                    <div class="team-points">87</div>
+                </div>
+            </div>
+
+            <!-- AURUS -->
+            <div class="team-row team-aurus">
+                <div class="team-card team-aurus">
+                    <div class="team-logo"></div>
+                    <div class="team-name">AURUS</div>
+                    <div class="team-points">87</div>
+                </div>
+            </div>
+
+            <!-- БАЗ -->
+            <div class="team-row team-baz">
+                <div class="team-card team-baz">
+                    <div class="team-logo"></div>
+                    <div class="team-name">БАЗ</div>
+                    <div class="team-points">87</div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
 </div>
 
 <script>
-  // Глобальное состояние
-  let TEAMS = [];
-  let SCORES = {};
-  let ROUND = 1;
-  let MAX_ROUNDS = 11;
+// 🔧 Анимация — работает, потому что DOM уже загружен
+{
+    let isAnimating = false;
+    let lastTrigger = false;
 
-  // Обновить счётчик круга
-  function updateLapDisplay() {
-    const el = document.getElementById('lap-counter');
-    if (el) el.textContent = `${ROUND} / ${MAX_ROUNDS}`;
-  }
+    // Теперь можно искать элементы — они уже в DOM
+    const rows = Array.from(document.querySelectorAll('.team-row'));
+    const ranks = Array.from(document.querySelectorAll('.ranks-wrapper .team-rank'));
 
-  // Отрендерить таблицу
-  function renderTable() {
-    const container = document.getElementById('teams-container');
-    if (!container) return;
-
-    if (TEAMS.length === 0) {
-      container.innerHTML = '<div class="loading">🕗 Нет команд. Создайте их через /setup в Telegram.</div>';
-      return;
-    }
-
-    // Сортируем по баллам (по убыванию), при равенстве — по ID (стабильность)
-    const sorted = [...TEAMS].sort((a, b) => {
-      const scoreA = SCORES[a.id] || 0;
-      const scoreB = SCORES[b.id] || 0;
-      return scoreB - scoreA || a.id - b.id;
+    // Инициализация
+    rows.forEach((row, i) => {
+        row.style.order = i;
     });
 
-    container.innerHTML = '';
-    sorted.forEach((team, idx) => {
-      const rank = idx + 1;
-      const score = SCORES[team.id] || 0;
+    function moveRowTo(row, targetIndex) {
+        const currentOrder = parseInt(row.style.order);
+        if (currentOrder === targetIndex) return;
 
-      const row = document.createElement('div');
-      row.className = `team-row rank-${rank}`;
-      row.dataset.id = team.id;
+        const currentTop = row.offsetTop;
+        row.style.order = targetIndex;
+        void row.offsetParent; // reflow
+        const newTop = row.offsetTop;
 
-      // Позиция (1, 2, 3...)
-      const pos = document.createElement('span');
-      pos.className = 'position';
-      pos.textContent = rank;
-      row.appendChild(pos);
-
-      // Название
-      const info = document.createElement('div');
-      info.className = 'team-info';
-      const name = document.createElement('span');
-      name.className = 'team-name';
-      name.textContent = team.name;
-      info.appendChild(name);
-      row.appendChild(info);
-
-      // Баллы (+10, -5, +0)
-      const pts = document.createElement('span');
-      pts.className = 'points-change';
-      pts.textContent = (score >= 0 ? '+' : '') + score;
-      if (score > 0) pts.classList.add('pos');
-      if (score < 0) pts.classList.add('neg');
-      row.appendChild(pts);
-
-      container.appendChild(row);
-    });
-  }
-
-  // Запрос данных с бота
-  async function fetchScores() {
-    try {
-      const res = await fetch('/api/scores');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-
-      // Обновляем состояние
-      TEAMS = data.teams || [];
-      SCORES = {};
-      data.teams.forEach(t => {
-        SCORES[t.id] = t.score;
-      });
-      ROUND = data.round || 1;
-      MAX_ROUNDS = data.max_rounds || 11;
-
-      updateLapDisplay();
-      renderTable();
-    } catch (err) {
-      console.warn('⚠️ Не удалось загрузить данные:', err);
-      // Не очищаем таблицу — оставляем прошлый кэш (UX-friendly)
+        row.style.transition = 'none';
+        row.style.transform = `translateY(${currentTop - newTop}px)`;
+        requestAnimationFrame(() => {
+            row.style.transition = 'transform 0.5s cubic-bezier(0.2,0,0,1)';
+            row.style.transform = 'translateY(0)';
+        });
     }
-  }
 
-  // Поллинг раз в секунду
-  setInterval(fetchScores, 1000);
+    function animateToRealRanking() {
+        const sorted = [...rows].sort((a, b) => {
+            const sA = parseInt(a.querySelector('.team-points')?.textContent || '0');
+            const sB = parseInt(b.querySelector('.team-points')?.textContent || '0');
+            return sB - sA;
+        });
+        sorted.forEach((row, i) => {
+            moveRowTo(row, i);
+            if (ranks[i]) ranks[i].textContent = String(i + 1).padStart(2, '0');
+        });
+    }
 
-  // Первый запуск
-  fetchScores();
+    function simulateRace() {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        let step = 0;
+        const doStep = () => {
+            if (step >= 5) {
+                setTimeout(() => {
+                    animateToRealRanking();
+                    setTimeout(() => isAnimating = false, 600);
+                }, 300);
+                return;
+            }
+
+            const shuffled = [...rows].sort(() => Math.random() - 0.5);
+            shuffled.forEach((row, i) => moveRowTo(row, i));
+            step++;
+            setTimeout(doStep, 400);
+        };
+
+        doStep();
+    }
+
+    async function poll() {
+        try {
+            const res = await fetch('/api/scores');
+            const data = await res.json();
+
+            data.teams.forEach(team => {
+                const row = rows[team.id - 1]; // 1 → index 0, 2 → index 1...
+                const pts = row?.querySelector('.team-points');
+                if (pts) pts.textContent = team.score;
+            });
+
+            if (data.trigger_round && !lastTrigger) {
+                lastTrigger = true;
+                simulateRace();
+                setTimeout(() => lastTrigger = false, 6000);
+            }
+        } catch (e) {
+            console.warn("Poll error:", e);
+        }
+    }
+
+    setInterval(poll, 1000);
+    poll();
+
+    // Для теста в консоли
+    window.round = simulateRace;
+}
 </script>
 
 </body>

@@ -1,156 +1,87 @@
-# f1_bot.py — F1 Team Control Bot + Web Dashboard (локально)
-import os
+# f1_bot.py — F1 Team Control Bot + Web Dashboard (готов к работе)
 import re
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from telegram import Update
-from telegram.ext import (
-    Application, CommandHandler, MessageHandler,
-    filters, ContextTypes
-)
+from telegram.ext import Application, CommandHandler, ContextTypes
 
-# === ГЛОБАЛЬНЫЕ ДАННЫЕ (в памяти) ===
-TEAMS = []          # [{"id": 1, "name": "...", "aliases": [...], "score": 0}, ...]
+# === ГЛОБАЛЬНЫЕ ДАННЫЕ ===
 ROUND = 1
 MAX_ROUNDS = 11
+ROUND_ANIMATION_TRIGGER = False
+_reset_timer = None
+
+# 🏁 Список команд — в точности как в твоём HTML
+TEAMS = [
+    {"id": 1, "name": "WILLIAMS",      "aliases": ["williams", "виллиамс", "вилл"], "score": 0},
+    {"id": 2, "name": "MERCEDES",      "aliases": ["mercedes", "мерседес", "мерс"], "score": 0},
+    {"id": 3, "name": "MCLAREN",       "aliases": ["mclaren", "макларен", "мак"],   "score": 0},
+    {"id": 4, "name": "FERRARI",       "aliases": ["ferrari", "феррари", "скудерия"], "score": 0},
+    {"id": 5, "name": "SITRAK",        "aliases": ["sitrak", "ситрак"],              "score": 0},
+    {"id": 6, "name": "RED BULL",      "aliases": ["redbull", "ред булл", "булл"],   "score": 0},
+    {"id": 7, "name": "HOWO",          "aliases": ["howo", "хоуо"],                  "score": 0},
+    {"id": 8, "name": "ASTON MARTIN",  "aliases": ["aston", "астон", "астонмартин"], "score": 0},
+    {"id": 9, "name": "LADA",          "aliases": ["лада", "lada", "ваз"],           "score": 0},
+    {"id": 10, "name": "AURUS",        "aliases": ["aurus", "аурус"],                "score": 0},
+    {"id": 11, "name": "БАЗ",          "aliases": ["баз", "baz", "камаз"],           "score": 0},
+]
 
 def normalize(text: str) -> str:
-    """Убирает пробелы, приводит к нижнему регистру, удаляет спецсимволы"""
     return re.sub(r'[^а-яa-z0-9]', '', text.lower())
 
 def find_team(query: str):
-    """Ищет команду по названию или алиасу"""
     q = normalize(query)
     for team in TEAMS:
         if q == str(team["id"]) or any(q == normalize(a) for a in team["aliases"]):
             return team
     return None
 
-# === КОМАНДЫ ТЕЛЕГРАМ ===
+# === КОМАНДЫ ===
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "🏎️ *F1 Team Control*\n\n"
-        "Используйте:\n"
-        "`/setup` — создать команды\n"
-        "`/add <название> <баллы>` — изменить счёт\n"
-        "`/table` — показать таблицу\n"
-        "`/reset` — сбросить баллы\n"
-        "`/round` — перейти к следующему раунду",
+        "🏎️ *New Year'js Grand Prix — Live Control*\n\n"
+        "`/add <команда> <баллы>` — изменить счёт\n"
+        "`/table` — текущая таблица\n"
+        "`/reset` — сбросить все баллы\n"
+        "`/round` — запустить анимацию гонки!",
         parse_mode="Markdown"
     )
-
-async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global TEAMS
-    TEAMS = []
-    await update.message.reply_text(
-        "🛠️ *Создание команд*\n\n"
-        "Формат: `название, алиас1, алиас2, ...`\n"
-        "Каждая команда — с новой строки.\n\n"
-        "Пример:\n"
-        "`ФЕРРАмоны, ферра, скудерия\n"
-        "Кванториум, квант\n"
-        "Питонята, питон`\n\n"
-        "Отправьте список или `/done`.",
-        parse_mode="Markdown"
-    )
-    context.user_data["awaiting_setup"] = True
-
-async def handle_setup_lines(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.user_data.get("awaiting_setup"):
-        return
-
-    text = update.message.text.strip()
-    lines = text.split("\n")
-
-    for line in lines:
-        parts = [p.strip() for p in line.split(",") if p.strip()]
-        if not parts:
-            continue
-        name = parts[0]
-        aliases = parts[1:] if len(parts) > 1 else []
-        TEAMS.append({
-            "id": len(TEAMS) + 1,
-            "name": name,
-            "aliases": aliases,
-            "score": 0
-        })
-
-    await update.message.reply_text(
-        f"✅ Добавлено {len(lines)} команд(ы). Всего: {len(TEAMS)}\n"
-        "Отправьте ещё или `/done` для завершения."
-    )
-
-async def done_setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.user_data.get("awaiting_setup"):
-        await update.message.reply_text("Сначала вызовите /setup")
-        return
-
-    context.user_data["awaiting_setup"] = False
-    if not TEAMS:
-        await update.message.reply_text("⚠️ Не создано ни одной команды.")
-        return
-
-    msg = "🏁 *Команды готовы!*\n\n"
-    for t in TEAMS:
-        aliases = ", ".join(t["aliases"]) if t["aliases"] else "—"
-        msg += f"`{t['id']}.` *{t['name']}* (алиасы: `{aliases}`)\n"
-    msg += "\nТеперь можно использовать `/add`, `/table`, `/round`"
-    await update.message.reply_text(msg, parse_mode="Markdown")
 
 async def add_points(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not TEAMS:
-        await update.message.reply_text("❌ Сначала создайте команды: /setup")
+    if len(context.args) < 2:
+        await update.message.reply_text("❌ Формат: `/add <команда> <баллы>`\nПример: `/add мерс 10`", parse_mode="Markdown")
         return
-
-    args = context.args
-    if len(args) < 2:
-        await update.message.reply_text(
-            "❌ Формат: `/add <название> <баллы>`\n"
-            "Пример: `/add ферра 10` или `/add 1 -5`",
-            parse_mode="Markdown"
-        )
-        return
-
-    *name_parts, points_str = args
+    *name_parts, pts_str = context.args
     team_name = " ".join(name_parts)
+    team = find_team(team_name)
+    if not team:
+        names = ", ".join(t["name"] for t in TEAMS)
+        await update.message.reply_text(f"❌ Не найдена команда «{team_name}».\nВозможные: {names}")
+        return
     try:
-        points = int(points_str)
+        pts = int(pts_str)
     except ValueError:
         await update.message.reply_text("❌ Баллы должны быть целым числом.")
         return
-
-    team = find_team(team_name)
-    if not team:
-        names = ", ".join([t["name"] for t in TEAMS])
-        await update.message.reply_text(
-            f"❌ Команда «{team_name}» не найдена.\nДоступные: {names}"
-        )
-        return
-
-    old_score = team["score"]
-    team["score"] += points
-    sign = "+" if points >= 0 else ""
+    old = team["score"]
+    team["score"] += pts
+    sign = "+" if pts >= 0 else ""
     await update.message.reply_text(
-        f"✅ *{team['name']}*: {old_score} → {team['score']} pts\n"
-        f"Изменение: {sign}{points}",
+        f"✅ *{team['name']}*: {old} → {team['score']} pts\nИзменение: {sign}{pts}",
         parse_mode="Markdown"
     )
 
 async def show_table(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not TEAMS:
-        await update.message.reply_text("❌ Сначала создайте команды: /setup")
-        return
-
     sorted_teams = sorted(TEAMS, key=lambda t: t["score"], reverse=True)
     msg = f"🏆 *Раунд {ROUND} / {MAX_ROUNDS}*\n\n"
-    for i, team in enumerate(sorted_teams, 1):
+    for i, t in enumerate(sorted_teams, 1):
         medal = ""
         if i == 1: medal = "🥇 "
         elif i == 2: medal = "🥈 "
         elif i == 3: medal = "🥉 "
-        msg += f"{i}. {medal}{team['name']}: *{team['score']}*\n"
+        msg += f"{i}. {medal}{t['name']}: *{t['score']}*\n"
     await update.message.reply_text(msg, parse_mode="Markdown")
 
 async def reset_scores(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -158,84 +89,127 @@ async def reset_scores(update: Update, context: ContextTypes.DEFAULT_TYPE):
         team["score"] = 0
     await update.message.reply_text("🔄 Все баллы сброшены!")
 
-async def next_round(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global ROUND
-    if ROUND < MAX_ROUNDS:
-        ROUND += 1
-        await update.message.reply_text(f"⏭️ Раунд изменён на *{ROUND}*", parse_mode="Markdown")
-    else:
-        await update.message.reply_text("🏁 Достигнут последний раунд.")
+# === АНИМАЦИЯ /round ===
 
-# === HTTP-СЕРВЕР ДЛЯ САЙТА ===
+
+def _reset_round_flag():
+    global ROUND_ANIMATION_TRIGGER
+    ROUND_ANIMATION_TRIGGER = False
+    print("🔄 Анимация /round: флаг сброшен")
+
+
+async def trigger_round_animation(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global ROUND_ANIMATION_TRIGGER, _reset_timer
+
+    # Отменяем предыдущий таймер, если он ещё не сработал
+    if _reset_timer and _reset_timer.is_alive():
+        _reset_timer.cancel()
+
+    # Запускаем анимацию
+    ROUND_ANIMATION_TRIGGER = True
+    await update.message.reply_text(
+        f"🏁 *Раунд {ROUND}: СТАРТ ГОНКИ!* 🏎️💨\n"
+        "Табло на сайте начинает анимацию пересортировки…",
+        parse_mode="Markdown"
+    )
+    print("▶️ Анимация /round: флаг ВКЛЮЧЁН")
+
+    # Сбрасываем через 5 секунд
+    _reset_timer = threading.Timer(5.0, _reset_round_flag)
+    _reset_timer.start()
+
+# === HTTP-СЕРВЕР ===
+
+import os  # ← убедись, что импортировано
 
 class ScoresHandler(BaseHTTPRequestHandler):
     def do_GET(self):
+        # 1. Корень
         if self.path == "/":
-            # Отдаём index.html
-            try:
-                with open("index.html", "r", encoding="utf-8") as f:
-                    content = f.read()
-                self.send_response(200)
-                self.send_header("Content-type", "text/html; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(content.encode("utf-8"))
-            except FileNotFoundError:
-                self.send_error(404, "index.html not found")
-            except Exception as e:
-                self.send_error(500, f"Server error: {e}")
+            self.serve_file("index.html", "text/html")
+
+        # 2. API
         elif self.path == "/api/scores":
-            # API: вернуть данные
             data = {
                 "round": ROUND,
                 "max_rounds": MAX_ROUNDS,
-                "teams": [
-                    {
-                        "id": t["id"],
-                        "name": t["name"],
-                        "score": t["score"],
-                    }
-                    for t in TEAMS
-                ],
+                "trigger_round": ROUND_ANIMATION_TRIGGER,
+                "teams": [{"id": t["id"], "name": t["name"], "score": t["score"]} for t in TEAMS],
             }
             self.send_response(200)
             self.send_header("Content-type", "application/json; charset=utf-8")
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
-            self.wfile.write(json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"))
+            self.wfile.write(json.dumps(data, ensure_ascii=False).encode("utf-8"))
+
+        # 3. Статика: css/, img/, js/
         else:
-            self.send_error(404)
+            # Убираем начальный /
+            path = self.path.lstrip('/')
+            # Безопасность: запрещаем .. и /
+            if ".." in path or path.startswith("/"):
+                self.send_error(403, "Forbidden")
+                return
 
-def run_http_server(port=8000):
-    server_address = ("localhost", port)
-    httpd = HTTPServer(server_address, ScoresHandler)
-    print(f"🌐 HTTP-сервер запущен: http://localhost:{port}")
-    httpd.serve_forever()
+            # Проверяем существование
+            if os.path.isfile(path):
+                self.serve_file(path)
+            else:
+                self.send_error(404, f"File not found: {path}")
 
-# Запуск HTTP-сервера в фоновом потоке
-http_thread = threading.Thread(target=run_http_server, daemon=True)
-http_thread.start()
+    def serve_file(self, path, content_type=None):
+        try:
+            # Определяем Content-Type, если не задан
+            if content_type is None:
+                if path.endswith('.css'):
+                    content_type = 'text/css'
+                elif path.endswith('.js'):
+                    content_type = 'application/javascript'
+                elif path.endswith('.png'):
+                    content_type = 'image/png'
+                elif path.endswith('.jpg') or path.endswith('.jpeg'):
+                    content_type = 'image/jpeg'
+                else:
+                    content_type = 'text/plain'
+
+            with open(path, 'rb') as f:
+                content = f.read()
+
+            self.send_response(200)
+            self.send_header("Content-type", f"{content_type}; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            self.wfile.write(content)
+
+        except FileNotFoundError:
+            self.send_error(404, f"File not found: {path}")
+        except Exception as e:
+            self.send_error(500, str(e))
+
+def run_http_server():
+    server = HTTPServer(("localhost", 8000), ScoresHandler)
+    print("✅ HTTP-сервер запущен: http://localhost:8000")
+    server.serve_forever()
+
+# Запуск сервера в фоне
+threading.Thread(target=run_http_server, daemon=True).start()
 
 # === ЗАПУСК БОТА ===
+
 def main():
-    TELEGRAM_TOKEN = "8404196996:AAGZUfdlGNqZ6S-zmnaV7Tf5_WlaNYGq4cg"
-    if not TELEGRAM_TOKEN:
-        print("❗ Установите TELEGRAM_TOKEN")
-        return
+    TOKEN = "8404196996:AAGZUfdlGNqZ6S-zmnaV7Tf5_WlaNYGq4cg"
+    app = Application.builder().token(TOKEN).build()
 
-    app = Application.builder().token(TELEGRAM_TOKEN).build()
-
+    # Обработчики команд
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("setup", setup))
-    app.add_handler(CommandHandler("done", done_setup))
     app.add_handler(CommandHandler("add", add_points))
     app.add_handler(CommandHandler("table", show_table))
     app.add_handler(CommandHandler("reset", reset_scores))
-    app.add_handler(CommandHandler("round", next_round))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_setup_lines))
+    app.add_handler(CommandHandler("round", trigger_round_animation))
 
     print("✅ Бот запущен!")
-    print("Откройте Telegram и напишите /start")
-    print("Сайт: http://localhost:8000")
+    print("👉 Напишите в Telegram: /start")
+    print("📺 Сайт: http://localhost:8000")
     app.run_polling()
 
 if __name__ == "__main__":

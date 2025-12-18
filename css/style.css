@@ -1,0 +1,225 @@
+/* Подключение шрифта через @import (если используешь Google Fonts) */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
+
+/* Глобальные стили для всего документа */
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Montserrat', sans-serif; /* глобальный шрифт */
+}
+
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: black;
+    font-family: Montserrat, sans-serif;
+}
+
+/* Центрируем сцену */
+.scene {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100vw;
+    height: 100vh;
+}
+
+/* Масштабируемый контейнер */
+.bg-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 1545px;
+    height: 100vh; /* теперь занимает всю высоту экрана */
+}
+
+/* Фоны */
+.stars-bg,
+.header-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-repeat: no-repeat;
+}
+
+.stars-bg {
+    background-image: url('../img/звезды.png');
+    z-index: 0;
+}
+
+.header-bg {
+    background-image: url('../img/бэкграунд.png');
+    z-index: 1;
+}
+
+.board {
+    position: absolute;
+    top: 210px;      /* отступ сверху */
+    left: 2%;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+/* Горизонтальная строка: карточка + квадрат с номером */
+.team-row {
+    display: flex;
+    align-items: center;   /* выравнивание по центру по y */
+    gap: 20px;             /* расстояние между карточкой и квадратом */
+    order: 0;
+    transition: order 0.4s ease, transform 0.3s ease;
+    position: relative;
+}
+
+/* Карточки команд */
+.team-card {
+    display: flex;
+    align-items: center;       /* вертикальное выравнивание по центру */
+    justify-content: flex-start; /* текст и логотип слева */
+    border-radius: 8px;
+    color: white;
+    width: 780px;              /* делаем карточку чуть длиннее */
+    min-width: 824px;          /* минимальная ширина */
+    height: 100px;
+    padding: 0 40px;           /* можно оставить небольшой padding слева/справа */
+    box-sizing: border-box;    /* чтобы ширина считалась с padding */
+}
+
+.team-logo {
+    width: 100px;
+    height: 100px;
+    background-image: url('../img/williams.png');
+    padding-right: 125px; /* сдвиг значка левее */
+    background-size: contain;
+    background-repeat: no-repeat;
+    margin-right: 10px;
+}
+
+.team-name {
+    flex: 1;
+    font-size: 42px;
+    font-weight: 900;
+    color: white;
+}
+
+/* Контейнер для квадратов с номерами */
+.ranks-wrapper {
+    position: absolute;
+    top: 210px;       /* совпадает с верхом board */
+    left: 870px;      /* отступ от правого края bg-wrapper */
+    display: flex;
+    flex-direction: column;
+    gap: 18px;        /* расстояние между квадратами */
+    z-index: 2;
+}
+
+/* Квадраты с номерами */
+.team-rank {
+    width: 133px;
+    height: 100px;
+    background: #04A4D5;
+    color: #FFFFFF;
+    font-size: 46.7px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Montserrat', sans-serif; /* применяем шрифт */
+}
+
+/* Эффект "встряски" во время перемешки */
+.team-row.shake {
+    animation: shake 0.3s ease infinite;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-3px); }
+    75% { transform: translateX(3px); }
+}
+
+/* Особенные первые 3 места */
+.team-rank.gold {
+    background: #FFD400; /* золото */
+    color: white;        /* текст лучше контрастный */
+}
+
+.team-rank.silver {
+    background: #858585; /* серебро */
+    color: white;
+}
+
+.team-rank.bronze {
+    background: #A66D04; /* бронза */
+    color: white;
+}
+
+
+/* Персонализированные градиенты и лого для каждой команды */
+.team-williams {
+    background: linear-gradient(90deg, #43A1F8, #000000);
+}
+.team-williams .team-logo { background-image: url('../img/виллиамс.png'); }
+
+.team-mercedes {
+    background: linear-gradient(90deg, #00B0AA, #000000);
+}
+.team-mercedes .team-logo { background-image: url('../img/мерседес.png'); }
+
+.team-mclaren {
+    background: linear-gradient(90deg, #ED8112, #000000);
+}
+.team-mclaren .team-logo { background-image: url('../img/макларен.png'); }
+
+.team-ferrari {
+    background: linear-gradient(90deg, #C11D32, #000000);
+}
+.team-ferrari .team-logo { background-image: url('../img/ферари.png'); }
+
+.team-sitrak {
+    background: linear-gradient(90deg, #004870, #000000);
+}
+.team-sitrak .team-logo { background-image: url('../img/ситрак.png'); }
+
+.team-redbull {
+    background: linear-gradient(90deg, #1448AB, #000000);
+}
+.team-redbull .team-logo { background-image: url('../img/редбул.png'); }
+
+.team-howo {
+    background: linear-gradient(90deg, #FFFFFF, #000000);
+}
+.team-howo .team-logo { background-image: url('../img/хово.png'); }
+
+.team-astonmartin {
+    background: linear-gradient(90deg, #005A50, #000000);
+}
+.team-astonmartin .team-logo { background-image: url('../img/астон мартин.png'); }
+
+.team-lada {
+    background: linear-gradient(90deg, #2D509F, #000000);
+}
+.team-lada .team-logo { background-image: url('../img/лада.png'); }
+
+.team-aurus {
+    background: linear-gradient(90deg, #EDA700, #000000);
+}
+.team-aurus .team-logo { background-image: url('../img/аурус.png'); }
+
+.team-baz {
+    background: linear-gradient(90deg, #FFCD1E, #000000);
+}
+.team-baz .team-logo { background-image: url('../img/баз.png'); }
+
+
+
