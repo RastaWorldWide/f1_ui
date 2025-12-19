@@ -52,12 +52,12 @@ body {
 }
 
 .stars-bg {
-    background-image: url('../img/звезды.png');
+    background-image: url('../img/stars.png');
     z-index: 0;
 }
 
 .header-bg {
-    background-image: url('../img/бэкграунд.png');
+    background-image: url('../img/back.png');
     z-index: 1;
 }
 
@@ -77,7 +77,6 @@ body {
     align-items: center;   /* выравнивание по центру по y */
     gap: 20px;             /* расстояние между карточкой и квадратом */
     order: 0;
-    transition: order 0.4s ease, transform 0.3s ease;
     position: relative;
 }
 
@@ -148,6 +147,17 @@ body {
     75% { transform: translateX(3px); }
 }
 
+/* Финальная анимация */
+@keyframes pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+}
+
+@keyframes glow {
+    from { text-shadow: 0 0 8px rgba(255,215,0,0.5); }
+    to   { text-shadow: 0 0 20px rgba(255,215,0,1); }
+}
+
 /* Особенные первые 3 места */
 .team-rank.gold {
     background: #FFD400; /* золото */
@@ -164,62 +174,66 @@ body {
     color: white;
 }
 
+.team-row.overtake {
+    background-color: rgba(255, 215, 0, 0.4); /* золотистая подсветка */
+    transition: background-color 0.5s ease;
+}
 
 /* Персонализированные градиенты и лого для каждой команды */
 .team-williams {
     background: linear-gradient(90deg, #43A1F8, #000000);
 }
-.team-williams .team-logo { background-image: url('../img/виллиамс.png'); }
+.team-williams .team-logo { background-image: url('../img/williams.png'); }
 
 .team-mercedes {
     background: linear-gradient(90deg, #00B0AA, #000000);
 }
-.team-mercedes .team-logo { background-image: url('../img/мерседес.png'); }
+.team-mercedes .team-logo { background-image: url('../img/mercedes.png'); }
 
 .team-mclaren {
     background: linear-gradient(90deg, #ED8112, #000000);
 }
-.team-mclaren .team-logo { background-image: url('../img/макларен.png'); }
+.team-mclaren .team-logo { background-image: url('../img/mclaren.png'); }
 
 .team-ferrari {
     background: linear-gradient(90deg, #C11D32, #000000);
 }
-.team-ferrari .team-logo { background-image: url('../img/ферари.png'); }
+.team-ferrari .team-logo { background-image: url('../img/ferari.png'); }
 
 .team-sitrak {
     background: linear-gradient(90deg, #004870, #000000);
 }
-.team-sitrak .team-logo { background-image: url('../img/ситрак.png'); }
+.team-sitrak .team-logo { background-image: url('../img/sitrack.png'); }
 
 .team-redbull {
     background: linear-gradient(90deg, #1448AB, #000000);
 }
-.team-redbull .team-logo { background-image: url('../img/редбул.png'); }
+.team-redbull .team-logo { background-image: url('../img/redbull.png'); }
 
 .team-howo {
     background: linear-gradient(90deg, #FFFFFF, #000000);
 }
-.team-howo .team-logo { background-image: url('../img/хово.png'); }
+.team-howo .team-logo { background-image: url('../img/hovo.png'); }
 
 .team-astonmartin {
     background: linear-gradient(90deg, #005A50, #000000);
 }
-.team-astonmartin .team-logo { background-image: url('../img/астон мартин.png'); }
+.team-astonmartin .team-logo { background-image: url('../img/astonmartin.png'); }
 
 .team-lada {
     background: linear-gradient(90deg, #2D509F, #000000);
 }
-.team-lada .team-logo { background-image: url('../img/лада.png'); }
+.team-lada .team-logo { background-image: url('../img/lada.png'); }
 
 .team-aurus {
     background: linear-gradient(90deg, #EDA700, #000000);
 }
-.team-aurus .team-logo { background-image: url('../img/аурус.png'); }
+.team-aurus .team-logo { background-image: url('../img/aurus.png'); }
 
 .team-baz {
     background: linear-gradient(90deg, #FFCD1E, #000000);
 }
-.team-baz .team-logo { background-image: url('../img/баз.png'); }
+.team-baz .team-logo { background-image: url('../img/baz.png'); }
 
 
 
