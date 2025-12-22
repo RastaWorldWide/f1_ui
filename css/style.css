@@ -97,8 +97,6 @@ body {
 .team-logo {
     width: 100px;
     height: 100px;
-    background-image: url('../img/williams.png');
-    padding-right: 125px; /* сдвиг значка левее */
     background-size: contain;
     background-repeat: no-repeat;
     margin-right: 10px;

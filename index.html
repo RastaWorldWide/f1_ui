@@ -138,104 +138,179 @@
 
 </div>
 
+<!-- Добавь в CSS (если ещё нет): -->
+<style>
+.team-row {
+  transition: margin-top 0.5s cubic-bezier(0.2, 0, 0, 1);
+  margin-top: 0 !important;
+}
+.team-row.animating {
+  transition: margin-top 0.5s cubic-bezier(0.2, 0, 0, 1) !important;
+}
+</style>
+
 <script>
-// 🔧 Анимация — работает, потому что DOM уже загружен
-{
+document.addEventListener('DOMContentLoaded', () => {
     let isAnimating = false;
-    let lastTrigger = false;
 
-    // Теперь можно искать элементы — они уже в DOM
-    const rows = Array.from(document.querySelectorAll('.team-row'));
-    const ranks = Array.from(document.querySelectorAll('.ranks-wrapper .team-rank'));
+    const board = document.querySelector('.board');
+    let rows = Array.from(board.querySelectorAll('.team-row'));
 
-    // Инициализация
-    rows.forEach((row, i) => {
-        row.style.order = i;
-    });
+    if (!board || rows.length < 2) {
+        console.error('Board or rows not found');
+        return;
+    }
 
-    function moveRowTo(row, targetIndex) {
-        const currentOrder = parseInt(row.style.order);
-        if (currentOrder === targetIndex) return;
-
-        const currentTop = row.offsetTop;
-        row.style.order = targetIndex;
-        void row.offsetParent; // reflow
-        const newTop = row.offsetTop;
-
-        row.style.transition = 'none';
-        row.style.transform = `translateY(${currentTop - newTop}px)`;
-        requestAnimationFrame(() => {
-            row.style.transition = 'transform 0.5s cubic-bezier(0.2,0,0,1)';
-            row.style.transform = 'translateY(0)';
+    function capturePositions() {
+        const boardRect = board.getBoundingClientRect();
+        rows.forEach(row => {
+            const rect = row.getBoundingClientRect();
+            row.dataset.realTop = rect.top - boardRect.top;
         });
     }
 
-    function animateToRealRanking() {
-        const sorted = [...rows].sort((a, b) => {
-            const sA = parseInt(a.querySelector('.team-points')?.textContent || '0');
-            const sB = parseInt(b.querySelector('.team-points')?.textContent || '0');
-            return sB - sA;
-        });
-        sorted.forEach((row, i) => {
-            moveRowTo(row, i);
-            if (ranks[i]) ranks[i].textContent = String(i + 1).padStart(2, '0');
+    function freezePositions() {
+        board.style.height = board.offsetHeight + 'px';
+        rows.forEach(row => {
+            row.style.position = 'absolute';
+            row.style.top = row.dataset.realTop + 'px';
+            row.style.left = '0';
+            row.style.width = '100%';
+            row.style.margin = '0';
+            row.style.transition = 'none';
         });
     }
 
-    function simulateRace() {
+    function unfreezePositions() {
+        rows.forEach(row => {
+            row.style.position = '';
+            row.style.top = '';
+            row.style.left = '';
+            row.style.width = '';
+            row.style.transition = '';
+            row.style.zIndex = '';
+        });
+        board.style.height = '';
+    }
+
+    function smoothOvertake(lowerIndex, upperIndex, callback) {
         if (isAnimating) return;
         isAnimating = true;
 
-        let step = 0;
-        const doStep = () => {
-            if (step >= 5) {
-                setTimeout(() => {
-                    animateToRealRanking();
-                    setTimeout(() => isAnimating = false, 600);
-                }, 300);
-                return;
-            }
+        const lower = rows[lowerIndex];
+        const upper = rows[upperIndex];
 
-            const shuffled = [...rows].sort(() => Math.random() - 0.5);
-            shuffled.forEach((row, i) => moveRowTo(row, i));
-            step++;
-            setTimeout(doStep, 400);
-        };
+        capturePositions();
+        freezePositions();
 
-        doStep();
+        const lowerTop = parseFloat(lower.dataset.realTop);
+        const upperTop = parseFloat(upper.dataset.realTop);
+
+        lower.style.zIndex = 3;
+        upper.style.zIndex = 2;
+
+        lower.offsetHeight; // reflow
+
+        requestAnimationFrame(() => {
+            lower.style.transition = 'top 900ms cubic-bezier(.4,0,.2,1)';
+            upper.style.transition = 'top 900ms cubic-bezier(.4,0,.2,1)';
+
+            lower.style.top = upperTop + 'px';
+            upper.style.top = lowerTop + 'px';
+        });
+
+        setTimeout(() => {
+            board.insertBefore(lower, upper);
+            rows.splice(upperIndex, 0, rows.splice(lowerIndex, 1)[0]);
+            unfreezePositions();
+            isAnimating = false;
+            if (callback) callback();
+        }, 950);
     }
 
+    // ==============================
+    // Анимация "рандомных обгонов"
+    // ==============================
+    function randomRaceStep(count = 5, interval = 1200, callback) {
+        let step = 0;
+        const raceInterval = setInterval(() => {
+            if (step >= count) {
+                clearInterval(raceInterval);
+                if (callback) callback(); // после рандома запускаем реальный лидерборд
+                return;
+            }
+            const i = 1 + Math.floor(Math.random() * (rows.length - 1));
+            smoothOvertake(i, i - 1);
+            step++;
+        }, interval);
+    }
+
+    // ==============================
+    // Анимация "по очкам"
+    // ==============================
+    function leaderboardRace(sortedTeamIds) {
+        let index = 0;
+
+        function nextOvertake() {
+            if (index >= sortedTeamIds.length) return;
+
+            const targetId = sortedTeamIds[index];
+            const currentIndex = rows.findIndex(r => parseInt(r.dataset.teamId) === targetId);
+
+            if (currentIndex > index) {
+                smoothOvertake(currentIndex, index, nextOvertake);
+            } else {
+                index++;
+                nextOvertake();
+            }
+        }
+
+        nextOvertake();
+    }
+
+    // ==============================
+    // Поллинг с бэка
+    // ==============================
     async function poll() {
         try {
-            const res = await fetch('/api/scores');
+            const res = await fetch("/api/scores");
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
 
-            data.teams.forEach(team => {
-                const row = rows[team.id - 1]; // 1 → index 0, 2 → index 1...
-                const pts = row?.querySelector('.team-points');
+            // Обновляем очки на табло
+            data.teams?.forEach(team => {
+                const row = rows.find(r => parseInt(r.dataset.teamId) === team.id);
+                const pts = row?.querySelector(".team-points");
                 if (pts) pts.textContent = team.score;
             });
 
-            if (data.trigger_round && !lastTrigger) {
-                lastTrigger = true;
-                simulateRace();
-                setTimeout(() => lastTrigger = false, 6000);
+            // Если триггер /round — сначала рандомные обгоны, потом лидерборд
+            if (data.trigger_round) {
+                const sortedIds = data.teams
+                    .sort((a, b) => b.score - a.score)
+                    .map(t => t.id);
+
+                randomRaceStep(5, 1200, () => {
+                    leaderboardRace(sortedIds);
+                });
             }
         } catch (e) {
-            console.warn("Poll error:", e);
+            console.warn("Poll error:", e.message || e);
         }
     }
 
-    setInterval(poll, 1000);
-    poll();
+    // ==============================
+    // Инициализация
+    // ==============================
+    // Устанавливаем dataset teamId на каждом роу
+    rows.forEach((r, i) => r.dataset.teamId = i + 1);
 
-    // Для теста в консоли
-    window.round = simulateRace;
-}
+    poll();
+    setInterval(poll, 1000);
+});
 </script>
 
-<script src="js/final-countdown.js"></script>
-
+<script src="js/index.js"></script>
 
 </body>
 </html>

@@ -16,7 +16,7 @@ nest_asyncio.apply()
 ROUND = 1
 MAX_ROUNDS = 11
 ROUND_ANIMATION_TRIGGER = False
-FINAL_INDEX = None  # None = анимация не активна
+FINAL_INDEX = -1  # None = анимация не активна
 _reset_timer = None
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # путь к папке с main.py
@@ -92,51 +92,41 @@ async def add_points(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def trigger_final(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global FINAL_INDEX
-    FINAL_INDEX = -2  # сброс
+    # Сбрасываем в -2 → фронтенд поймёт: "начать с 11-го"
+    FINAL_INDEX = -2
     await update.message.reply_text(
         "🎬 *ФИНАЛЬНЫЙ ОТСЧЁТ ЗАПУЩЕН!* \n"
-        "➡️ Теперь используйте `/next`, чтобы раскрыть таблицу — с 11-го места до 1-го!",
+        "➡️ Используйте `/next`, чтобы раскрыть места **с 11-го по 1-е**.",
         parse_mode="Markdown"
     )
 
 async def next_final(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global FINAL_INDEX
 
-    sorted_teams = sorted(TEAMS, key=lambda t: t["score"], reverse=True)
-    n = len(sorted_teams)  # = 11
+    n = len(TEAMS)
 
-    # Случай 1: финал ещё не начат — инициализируем и показываем первую команду (11-е место)
     if FINAL_INDEX == -2:
-        FINAL_INDEX = n - 1  # 10 → 11-е место
-        team = sorted_teams[FINAL_INDEX]
-        position = FINAL_INDEX + 1
-        await update.message.reply_text(f"🎬 *Финал начался!* \n➡️ {position}-е место: *{team['name']}*", parse_mode="Markdown")
-        FINAL_INDEX -= 1  # готовимся к следующему вызову
+        # Первый вызов: начинаем с 11-го (последнего)
+        FINAL_INDEX = n - 1
+        await update.message.reply_text("🎬 *Финал начался — 11-е место раскрывается...*", parse_mode="Markdown")
         return
 
-    # Случай 2: финал завершён
     if FINAL_INDEX < 0:
-        await update.message.reply_text("🏁 Финал уже завершён. Используйте `/final`, чтобы начать заново.", parse_mode="Markdown")
+        await update.message.reply_text("🏁 Финал завершён.", parse_mode="Markdown")
         return
 
-    # Случай 3: индекс вне диапазона (защита)
     if FINAL_INDEX >= n:
-        await update.message.reply_text("❌ Ошибка: индекс вне диапазона.", parse_mode="Markdown")
-        FINAL_INDEX = -2  # сброс к начальному состоянию
+        await update.message.reply_text("⚠️ Ошибка индекса.", parse_mode="Markdown")
+        FINAL_INDEX = -2
         return
 
-    # Случай 4: нормальный шаг — показываем команду
-    team = sorted_teams[FINAL_INDEX]
+    # Просто двигаем индекс — всё отображение делает фронтенд
     position = FINAL_INDEX + 1
-    await update.message.reply_text(f"➡️ {position}-е место: *{team['name']}*", parse_mode="Markdown")
-
-    # Переход к следующей (выше)
+    await update.message.reply_text(f"➡️ Раскрыто {position}-е место.", parse_mode="Markdown")
     FINAL_INDEX -= 1
 
-    # Проверка завершения после шага
     if FINAL_INDEX < 0:
-        await update.message.reply_text("🏆 *Финал завершён! Победитель объявлен!*", parse_mode="Markdown")
-
+        await update.message.reply_text("🏆 *Финал завершён!*", parse_mode="Markdown")
 async def show_leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
     sorted_teams = sorted(TEAMS, key=lambda t: t["score"], reverse=True)
     msg = "🏆 *Leaderboard*\n\n"
@@ -183,7 +173,16 @@ class ScoresHandler(BaseHTTPRequestHandler):
             }
             self.send_json(data)
         elif path == "/api/final":
-            data = {"final_index": FINAL_INDEX if FINAL_INDEX is not None else -1}
+            sorted_teams = sorted(TEAMS, key=lambda t: t["score"], reverse=True)
+            data = {
+                "final_index": FINAL_INDEX if FINAL_INDEX is not None else -1,
+                "sorted_teams": [
+                    {"id": t["id"], "name": t["name"], "score": t["score"]}
+                    for t in sorted_teams
+                ],
+                "is_final_active": FINAL_INDEX == -2 or (
+                        FINAL_INDEX is not None and 0 <= FINAL_INDEX < len(TEAMS)
+                ),            }
             self.send_json(data)
         else:
             file_path = os.path.join(BASE_DIR, path.lstrip("/"))
@@ -191,6 +190,18 @@ class ScoresHandler(BaseHTTPRequestHandler):
                 self.serve_file(file_path)
             else:
                 self.send_error(404, f"File not found: {file_path}")
+
+    def do_POST(self):
+        if self.path == "/api/next":
+            global FINAL_INDEX
+            n = len(TEAMS)
+            if FINAL_INDEX == -2:
+                FINAL_INDEX = n - 1
+            elif FINAL_INDEX >= 0:
+                FINAL_INDEX -= 1
+            self.send_json({"ok": True, "final_index": FINAL_INDEX})
+        else:
+            self.send_error(404)
 
     def serve_file(self, path, content_type=None):
         try:
