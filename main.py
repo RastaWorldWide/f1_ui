@@ -162,6 +162,17 @@ async def trigger_round_animation(update: Update, context: ContextTypes.DEFAULT_
 class ScoresHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = self.path
+
+        if path == "/api/round-trigger":
+            # Возвращаем текущее состояние команд для нового раунда
+            data = {
+                "round": ROUND,
+                "max_rounds": MAX_ROUNDS,
+                "teams": [{"id": t["id"], "name": t["name"], "score": t["score"]} for t in TEAMS]
+            }
+            self.send_json(data)
+            return
+
         if path == "/":
             self.serve_file(os.path.join(BASE_DIR, "index.html"), "text/html")
         elif path == "/api/scores":
@@ -192,6 +203,13 @@ class ScoresHandler(BaseHTTPRequestHandler):
                 self.send_error(404, f"File not found: {file_path}")
 
     def do_POST(self):
+        if self.path == "/api/round-started":
+            global ROUND_ANIMATION_TRIGGER
+            ROUND_ANIMATION_TRIGGER = False
+            print("🔄 /round флаг сброшен фронтендом")
+            self.send_json({"ok": True})
+            return
+
         if self.path == "/api/next":
             global FINAL_INDEX
             n = len(TEAMS)
@@ -200,8 +218,10 @@ class ScoresHandler(BaseHTTPRequestHandler):
             elif FINAL_INDEX >= 0:
                 FINAL_INDEX -= 1
             self.send_json({"ok": True, "final_index": FINAL_INDEX})
-        else:
-            self.send_error(404)
+            return  # ← не забудьте добавить return!
+
+        # Если ни один путь не совпал:
+        self.send_error(404)
 
     def serve_file(self, path, content_type=None):
         try:

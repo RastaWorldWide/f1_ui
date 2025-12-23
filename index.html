@@ -152,20 +152,23 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     let isAnimating = false;
-    let roundStarted = false;
+    let fakeRaceRunning = false;
+    const roundQueue = [];
 
     const board = document.querySelector('.board');
-    let rows = Array.from(board.querySelectorAll('.team-row'));
-
-    if (!board || rows.length < 2) {
-        console.error('Board or rows not found');
+    if (!board) {
+        console.error('Board not found');
         return;
     }
 
     // ==============================
-    // Утилиты позиций
+    // Утилиты для позиций
     // ==============================
-    function capturePositions() {
+    function getRows() {
+        return Array.from(board.querySelectorAll('.team-row'));
+    }
+
+    function capturePositions(rows) {
         const boardRect = board.getBoundingClientRect();
         rows.forEach(row => {
             const rect = row.getBoundingClientRect();
@@ -173,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function freezePositions() {
+    function freezePositions(rows) {
         board.style.height = board.offsetHeight + 'px';
         rows.forEach(row => {
             row.style.position = 'absolute';
@@ -185,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function unfreezePositions() {
+    function unfreezePositions(rows) {
         rows.forEach(row => {
             row.style.position = '';
             row.style.top = '';
@@ -204,11 +207,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isAnimating) return;
         isAnimating = true;
 
+        const rows = getRows();
         const lower = rows[lowerIndex];
         const upper = rows[upperIndex];
 
-        capturePositions();
-        freezePositions();
+        capturePositions(rows);
+        freezePositions(rows);
 
         const lowerTop = parseFloat(lower.dataset.realTop);
         const upperTop = parseFloat(upper.dataset.realTop);
@@ -216,7 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
         lower.style.zIndex = 3;
         upper.style.zIndex = 2;
 
-        lower.offsetHeight;
+        lower.offsetHeight; // reflow
 
         requestAnimationFrame(() => {
             lower.style.transition = 'top 700ms cubic-bezier(.4,0,.2,1)';
@@ -227,91 +231,113 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setTimeout(() => {
             board.insertBefore(lower, upper);
-            rows.splice(upperIndex, 0, rows.splice(lowerIndex, 1)[0]);
-            unfreezePositions();
+            unfreezePositions(getRows());
             isAnimating = false;
             callback && callback();
         }, 750);
     }
 
     // ==============================
-    // 3 фейковых обгона ПО ОЧЕРЕДИ
+    // Фейковые обгоны (серия)
     // ==============================
     function fakeRace(count, done) {
         let step = 0;
 
         function nextFake() {
             if (step >= count) {
+                fakeRaceRunning = false;
+                isAnimating = false;
                 done && done();
+
+                if (roundQueue.length) {
+                    const nextRound = roundQueue.shift();
+                    nextRound();
+                }
                 return;
             }
 
+            const rows = getRows();
             const i = 1 + Math.floor(Math.random() * (rows.length - 1));
             smoothOvertake(i, i - 1, () => {
                 step++;
-                setTimeout(nextFake, 300); // пауза между фейками
+                setTimeout(nextFake, 300);
             });
         }
 
+        fakeRaceRunning = true;
         nextFake();
     }
 
     // ==============================
-    // Реальный лидерборд
+    // Лидерборд по очкам
     // ==============================
     function leaderboardRace(sortedTeamIds) {
-    let targetPos = 0;
+        let targetPos = 0;
 
-    function processNextTeam() {
-        if (targetPos >= sortedTeamIds.length) return;
+        function processNextTeam() {
+            if (targetPos >= sortedTeamIds.length) return;
 
-        const teamId = sortedTeamIds[targetPos];
-        let currentIndex = rows.findIndex(
-            r => +r.dataset.teamId === teamId
-        );
+            const rows = getRows();
+            const teamId = sortedTeamIds[targetPos];
+            const currentIndex = rows.findIndex(r => +r.dataset.teamId === teamId);
 
-        // Если команда уже на нужной позиции — идём дальше
-        if (currentIndex === targetPos) {
-            targetPos++;
-            processNextTeam();
-            return;
+            if (currentIndex === targetPos) {
+                targetPos++;
+                processNextTeam();
+                return;
+            }
+
+            smoothOvertake(currentIndex, currentIndex - 1, () => {
+                setTimeout(processNextTeam, 250);
+            });
         }
 
-        // Двигаем ТОЛЬКО на 1 позицию вверх
-        smoothOvertake(currentIndex, currentIndex - 1, () => {
-            // после одного обгона проверяем снова эту же команду
-            setTimeout(processNextTeam, 250);
-        });
+        processNextTeam();
     }
 
-    processNextTeam();
-}
+    // ==============================
+    // ✅ ЕДИНСТВЕННОЕ определение: Запуск одного раунда
+    // ==============================
+    function triggerRoundInternal(teamsData) {
+        const sortedIds = [...teamsData]
+            .sort((a, b) => b.score - a.score)
+            .map(t => t.id);
 
+        const run = () => {
+            fakeRace(3, () => {
+                leaderboardRace(sortedIds);
+            });
+
+            // 🟢 Сбрасываем флаг ТОЛЬКО когда анимация реально запущена (не поставлено в очередь!)
+            fetch("/api/round-started", { method: "POST" })
+                .catch(err => console.warn("Не удалось сбросить флаг /round:", err));
+        };
+
+        if (fakeRaceRunning) {
+            roundQueue.push(run); // ставим в очередь — НЕ сбрасываем флаг!
+        } else {
+            run(); // запускаем и сбрасываем флаг
+        }
+    }
 
     // ==============================
-    // Poll
+    // Poll на обновление очков
     // ==============================
     async function poll() {
         try {
             const res = await fetch("/api/scores");
             const data = await res.json();
 
+            const rows = getRows();
             data.teams?.forEach(team => {
                 const row = rows.find(r => +r.dataset.teamId === team.id);
                 const pts = row?.querySelector(".team-points");
                 if (pts) pts.textContent = team.score;
             });
 
-            if (data.trigger_round && !roundStarted) {
-                roundStarted = true;
-
-                const sortedIds = [...data.teams]
-                    .sort((a, b) => b.score - a.score)
-                    .map(t => t.id);
-
-                fakeRace(3, () => {
-                    leaderboardRace(sortedIds);
-                });
+            if (data.trigger_round) {
+                triggerRoundInternal(data.teams);
+                // 🔴 НЕ делаем POST здесь — он уже внутри triggerRoundInternal при запуске
             }
 
         } catch (e) {
@@ -320,12 +346,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==============================
-    // Init
+    // Инициализация
     // ==============================
-    rows.forEach((r, i) => r.dataset.teamId = i + 1);
+    const initialRows = getRows();
+    initialRows.forEach((r, i) => r.dataset.teamId = i + 1);
 
     poll();
     setInterval(poll, 1000);
+
+    // ==============================
+    // Ручной запуск (если нужен — например, для dev-кнопки)
+    // ==============================
+    window.triggerRound = (teamsData) => {
+        const runRound = () => {
+            const rows = getRows();
+            const sortedIds = [...teamsData]
+                .sort((a, b) => b.score - a.score)
+                .map(t => t.id);
+
+            fakeRace(3, () => {
+                leaderboardRace(sortedIds);
+            });
+        };
+
+        if (fakeRaceRunning || isAnimating) {
+            roundQueue.push(() => runRound());
+        } else {
+            runRound();
+        }
+    };
 });
 </script>
 
