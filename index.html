@@ -152,6 +152,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     let isAnimating = false;
+    let roundStarted = false;
 
     const board = document.querySelector('.board');
     let rows = Array.from(board.querySelectorAll('.team-row'));
@@ -161,6 +162,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
+    // ==============================
+    // Утилиты позиций
+    // ==============================
     function capturePositions() {
         const boardRect = board.getBoundingClientRect();
         rows.forEach(row => {
@@ -193,6 +197,9 @@ document.addEventListener('DOMContentLoaded', () => {
         board.style.height = '';
     }
 
+    // ==============================
+    // Один аккуратный обгон
+    // ==============================
     function smoothOvertake(lowerIndex, upperIndex, callback) {
         if (isAnimating) return;
         isAnimating = true;
@@ -209,12 +216,11 @@ document.addEventListener('DOMContentLoaded', () => {
         lower.style.zIndex = 3;
         upper.style.zIndex = 2;
 
-        lower.offsetHeight; // reflow
+        lower.offsetHeight;
 
         requestAnimationFrame(() => {
-            lower.style.transition = 'top 900ms cubic-bezier(.4,0,.2,1)';
-            upper.style.transition = 'top 900ms cubic-bezier(.4,0,.2,1)';
-
+            lower.style.transition = 'top 700ms cubic-bezier(.4,0,.2,1)';
+            upper.style.transition = 'top 700ms cubic-bezier(.4,0,.2,1)';
             lower.style.top = upperTop + 'px';
             upper.style.top = lowerTop + 'px';
         });
@@ -224,85 +230,98 @@ document.addEventListener('DOMContentLoaded', () => {
             rows.splice(upperIndex, 0, rows.splice(lowerIndex, 1)[0]);
             unfreezePositions();
             isAnimating = false;
-            if (callback) callback();
-        }, 950);
+            callback && callback();
+        }, 750);
     }
 
     // ==============================
-    // Анимация "рандомных обгонов"
+    // 3 фейковых обгона ПО ОЧЕРЕДИ
     // ==============================
-    function randomRaceStep(count = 5, interval = 1200, callback) {
+    function fakeRace(count, done) {
         let step = 0;
-        const raceInterval = setInterval(() => {
+
+        function nextFake() {
             if (step >= count) {
-                clearInterval(raceInterval);
-                if (callback) callback(); // после рандома запускаем реальный лидерборд
+                done && done();
                 return;
             }
+
             const i = 1 + Math.floor(Math.random() * (rows.length - 1));
-            smoothOvertake(i, i - 1);
-            step++;
-        }, interval);
-    }
-
-    // ==============================
-    // Анимация "по очкам"
-    // ==============================
-    function leaderboardRace(sortedTeamIds) {
-        let index = 0;
-
-        function nextOvertake() {
-            if (index >= sortedTeamIds.length) return;
-
-            const targetId = sortedTeamIds[index];
-            const currentIndex = rows.findIndex(r => parseInt(r.dataset.teamId) === targetId);
-
-            if (currentIndex > index) {
-                smoothOvertake(currentIndex, index, nextOvertake);
-            } else {
-                index++;
-                nextOvertake();
-            }
+            smoothOvertake(i, i - 1, () => {
+                step++;
+                setTimeout(nextFake, 300); // пауза между фейками
+            });
         }
 
-        nextOvertake();
+        nextFake();
     }
 
     // ==============================
-    // Поллинг с бэка
+    // Реальный лидерборд
+    // ==============================
+    function leaderboardRace(sortedTeamIds) {
+    let targetPos = 0;
+
+    function processNextTeam() {
+        if (targetPos >= sortedTeamIds.length) return;
+
+        const teamId = sortedTeamIds[targetPos];
+        let currentIndex = rows.findIndex(
+            r => +r.dataset.teamId === teamId
+        );
+
+        // Если команда уже на нужной позиции — идём дальше
+        if (currentIndex === targetPos) {
+            targetPos++;
+            processNextTeam();
+            return;
+        }
+
+        // Двигаем ТОЛЬКО на 1 позицию вверх
+        smoothOvertake(currentIndex, currentIndex - 1, () => {
+            // после одного обгона проверяем снова эту же команду
+            setTimeout(processNextTeam, 250);
+        });
+    }
+
+    processNextTeam();
+}
+
+
+    // ==============================
+    // Poll
     // ==============================
     async function poll() {
         try {
             const res = await fetch("/api/scores");
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
 
-            // Обновляем очки на табло
             data.teams?.forEach(team => {
-                const row = rows.find(r => parseInt(r.dataset.teamId) === team.id);
+                const row = rows.find(r => +r.dataset.teamId === team.id);
                 const pts = row?.querySelector(".team-points");
                 if (pts) pts.textContent = team.score;
             });
 
-            // Если триггер /round — сначала рандомные обгоны, потом лидерборд
-            if (data.trigger_round) {
-                const sortedIds = data.teams
+            if (data.trigger_round && !roundStarted) {
+                roundStarted = true;
+
+                const sortedIds = [...data.teams]
                     .sort((a, b) => b.score - a.score)
                     .map(t => t.id);
 
-                randomRaceStep(5, 1200, () => {
+                fakeRace(3, () => {
                     leaderboardRace(sortedIds);
                 });
             }
+
         } catch (e) {
-            console.warn("Poll error:", e.message || e);
+            console.warn("Poll error:", e);
         }
     }
 
     // ==============================
-    // Инициализация
+    // Init
     // ==============================
-    // Устанавливаем dataset teamId на каждом роу
     rows.forEach((r, i) => r.dataset.teamId = i + 1);
 
     poll();
