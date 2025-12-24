@@ -108,7 +108,7 @@ async def next_final(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if FINAL_INDEX == -2:
         # Первый вызов: начинаем с 11-го (последнего)
         FINAL_INDEX = n - 1
-        await update.message.reply_text("🎬 *Финал начался — 11-е место раскрывается...*", parse_mode="Markdown")
+        await update.message.reply_text("🎬 *Финал начался — 11-е место раскрыто...*", parse_mode="Markdown")
         return
 
     if FINAL_INDEX < 0:
@@ -122,7 +122,7 @@ async def next_final(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Просто двигаем индекс — всё отображение делает фронтенд
     position = FINAL_INDEX + 1
-    await update.message.reply_text(f"➡️ Раскрыто {position}-е место.", parse_mode="Markdown")
+    await update.message.reply_text(f"➡️ Раскрыто {position - 1}-е место.", parse_mode="Markdown")
     FINAL_INDEX -= 1
 
     if FINAL_INDEX < 0:
@@ -153,7 +153,7 @@ async def trigger_round_animation(update: Update, context: ContextTypes.DEFAULT_
     if _reset_timer and _reset_timer.is_alive():
         _reset_timer.cancel()
     ROUND_ANIMATION_TRIGGER = True
-    await update.message.reply_text(f"🏁 *Раунд {ROUND}: СТАРТ ГОНКИ!* 🏎️💨", parse_mode="Markdown")
+    await update.message.reply_text(f"🏁 СТАРТ ГОНКИ!* 🏎️💨", parse_mode="Markdown")
     print("▶️ Анимация /round: флаг ВКЛЮЧЁН")
     _reset_timer = threading.Timer(5.0, _reset_round_flag)
     _reset_timer.start()
@@ -258,7 +258,7 @@ async def main_async():
     loop = asyncio.get_running_loop()
     loop.run_in_executor(None, run_http_server)
 
-    TOKEN = "8404196996:AAGZUfdlGNqZ6S-zmnaV7Tf5_WlaNYGq4cg"
+    TOKEN = os.getenv("BOT_TOKEN")
     app = Application.builder().token(TOKEN).build()
 
     # Добавляем обработчики команд

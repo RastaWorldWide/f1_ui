@@ -79,6 +79,9 @@ body {
     order: 0;
     position: relative;
 }
+.team-points{
+    display: none;
+}
 
 /* Карточки команд */
 .team-card {
@@ -99,7 +102,7 @@ body {
     height: 100px;
     background-size: contain;
     background-repeat: no-repeat;
-    margin-right: 10px;
+    margin-right: 30px;
 }
 
 .team-name {
