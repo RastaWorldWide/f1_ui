@@ -8,7 +8,9 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 import asyncio
 import nest_asyncio
+from dotenv import load_dotenv
 
+load_dotenv()
 # === Исправляем event loop для работы с Jupyter/PyCharm ===
 nest_asyncio.apply()
 
@@ -52,11 +54,23 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🏎️ *New Year'js Grand Prix — Live Control*\n\n"
         "`/add <команда> <баллы>` — изменить счёт\n"
-        "`/table` — текущая таблица\n"
-        "`/round` — запустить анимацию гонки!\n"
-        "`/final` — финальный отсчёт\n"
-        "`/next` — показать следующую команду в финале",
+        "/round - анимация гонки\n"
+        "/final - финальная анимация\n"
+        "/leaderboard - турнирная таблица\n"
+        "/help - инструкция\n"
+        "/next - раскрыть следующую позицию в финале\n",
         parse_mode="Markdown"
+    )
+
+async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "`/add <команда> <баллы>` — изменить счёт\n"
+        "/round - анимация гонки\n"
+        "/final - финальная анимация\n"
+        "/leaderboard - турнирная таблица\n"
+        "/help - инструкция\n"
+        "/next - раскрыть следующую позицию в финале\n",
+        parse_mode = "Markdown"
     )
 
 async def add_points(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -266,8 +280,9 @@ async def main_async():
     app.add_handler(CommandHandler("round", trigger_round_animation))
     app.add_handler(CommandHandler("final", trigger_final))
     app.add_handler(CommandHandler("next", next_final))
-    app.add_handler(CommandHandler("reset", reset_scores))
     app.add_handler(CommandHandler("leaderboard", show_leaderboard))
+    app.add_handler(CommandHandler("help", help))
+
 
     print("✅ Бот запущен! /start")
     print("📺 Сайт: http://localhost:8000")
