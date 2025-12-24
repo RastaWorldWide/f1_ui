@@ -25,17 +25,17 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # путь к папке 
 
 # 🏁 Список команд
 TEAMS = [
-    {"id": 1, "name": "WILLIAMS", "aliases": ["williams", "виллиамс", "вилл"], "score": 0},
+    {"id": 1, "name": "WILLIAMS", "aliases": ["williams", "виллиамс", "вильямс"], "score": 0},
     {"id": 2, "name": "MERCEDES", "aliases": ["mercedes", "мерседес", "мерс"], "score": 0},
-    {"id": 3, "name": "MCLAREN", "aliases": ["mclaren", "макларен", "мак"], "score": 0},
-    {"id": 4, "name": "FERRARI", "aliases": ["ferrari", "феррари", "скудерия"], "score": 0},
+    {"id": 3, "name": "MCLAREN", "aliases": ["mclaren", "макларен", "мк"], "score": 0},
+    {"id": 4, "name": "FERRARI", "aliases": ["ferrari", "феррари", "ферари"], "score": 0},
     {"id": 5, "name": "SITRAK", "aliases": ["sitrak", "ситрак"], "score": 0},
-    {"id": 6, "name": "RED BULL", "aliases": ["redbull", "ред булл", "булл"], "score": 0},
-    {"id": 7, "name": "HOWO", "aliases": ["howo", "хоуо"], "score": 0},
-    {"id": 8, "name": "ASTON MARTIN", "aliases": ["aston", "астон", "астонмартин"], "score": 0},
-    {"id": 9, "name": "LADA", "aliases": ["лада", "lada", "ваз"], "score": 0},
+    {"id": 6, "name": "RED BULL", "aliases": ["redbull", "ред булл", "red bull"], "score": 0},
+    {"id": 7, "name": "HOWO", "aliases": ["howo", "хово"], "score": 0},
+    {"id": 8, "name": "ASTON MARTIN", "aliases": ["aston martin", "астон", "астон мартин"], "score": 0},
+    {"id": 9, "name": "LADA", "aliases": ["лада", "lada"], "score": 0},
     {"id": 10, "name": "AURUS", "aliases": ["aurus", "аурус"], "score": 0},
-    {"id": 11, "name": "БАЗ", "aliases": ["баз", "baz", "камаз"], "score": 0},
+    {"id": 11, "name": "БАЗ", "aliases": ["баз", "baz"], "score": 0},
 ]
 
 def normalize(text: str) -> str:
@@ -150,11 +150,6 @@ async def show_leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif i == 3: medal = "🥉 "
         msg += f"{i:2}. {medal}{t['name']:<15} — *{t['score']:3}*\n"
     await update.message.reply_text(msg, parse_mode="Markdown")
-
-async def reset_scores(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    for team in TEAMS:
-        team["score"] = 0
-    await update.message.reply_text("🔄 Все баллы сброшены!")
 
 def _reset_round_flag():
     global ROUND_ANIMATION_TRIGGER
