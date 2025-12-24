@@ -223,8 +223,8 @@ document.addEventListener('DOMContentLoaded', () => {
         lower.offsetHeight; // reflow
 
         requestAnimationFrame(() => {
-            lower.style.transition = 'top 700ms cubic-bezier(.4,0,.2,1)';
-            upper.style.transition = 'top 700ms cubic-bezier(.4,0,.2,1)';
+            lower.style.transition = 'top 300ms cubic-bezier(.4,0,.2,1)';
+            upper.style.transition = 'top 300ms cubic-bezier(.4,0,.2,1)';
             lower.style.top = upperTop + 'px';
             upper.style.top = lowerTop + 'px';
         });

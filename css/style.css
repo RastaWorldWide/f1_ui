@@ -88,7 +88,6 @@ body {
     display: flex;
     align-items: center;       /* вертикальное выравнивание по центру */
     justify-content: flex-start; /* текст и логотип слева */
-    border-radius: 8px;
     color: white;
     width: 780px;              /* делаем карточку чуть длиннее */
     min-width: 824px;          /* минимальная ширина */

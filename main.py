@@ -161,7 +161,7 @@ async def trigger_round_animation(update: Update, context: ContextTypes.DEFAULT_
     if _reset_timer and _reset_timer.is_alive():
         _reset_timer.cancel()
     ROUND_ANIMATION_TRIGGER = True
-    await update.message.reply_text(f"🏁 СТАРТ ГОНКИ!* 🏎️💨", parse_mode="Markdown")
+    await update.message.reply_text(f"🏁 СТАРТ ГОНКИ! 🏎️💨", parse_mode="Markdown")
     print("▶️ Анимация /round: флаг ВКЛЮЧЁН")
     _reset_timer = threading.Timer(5.0, _reset_round_flag)
     _reset_timer.start()
