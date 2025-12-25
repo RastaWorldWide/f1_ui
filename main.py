@@ -9,6 +9,8 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 import asyncio
 import nest_asyncio
 from dotenv import load_dotenv
+from pathlib import Path
+
 
 load_dotenv()
 # === Исправляем event loop для работы с Jupyter/PyCharm ===
@@ -172,7 +174,6 @@ class ScoresHandler(BaseHTTPRequestHandler):
         path = self.path
 
         if path == "/api/round-trigger":
-            # Возвращаем текущее состояние команд для нового раунда
             data = {
                 "round": ROUND,
                 "max_rounds": MAX_ROUNDS,
@@ -183,7 +184,9 @@ class ScoresHandler(BaseHTTPRequestHandler):
 
         if path == "/":
             self.serve_file(os.path.join(BASE_DIR, "index.html"), "text/html")
-        elif path == "/api/scores":
+            return
+
+        if path == "/api/scores":
             data = {
                 "round": ROUND,
                 "max_rounds": MAX_ROUNDS,
@@ -191,7 +194,9 @@ class ScoresHandler(BaseHTTPRequestHandler):
                 "teams": [{"id": t["id"], "name": t["name"], "score": t["score"]} for t in TEAMS],
             }
             self.send_json(data)
-        elif path == "/api/final":
+            return
+
+        if path == "/api/final":
             sorted_teams = sorted(TEAMS, key=lambda t: t["score"], reverse=True)
             data = {
                 "final_index": FINAL_INDEX if FINAL_INDEX is not None else -1,
@@ -200,15 +205,61 @@ class ScoresHandler(BaseHTTPRequestHandler):
                     for t in sorted_teams
                 ],
                 "is_final_active": FINAL_INDEX == -2 or (
-                        FINAL_INDEX is not None and 0 <= FINAL_INDEX < len(TEAMS)
-                ),            }
+                    FINAL_INDEX is not None and 0 <= FINAL_INDEX < len(TEAMS)
+                ),
+            }
             self.send_json(data)
+            return
+
+        # Обработка статических файлов
+        safe_path = Path(BASE_DIR) / path.lstrip("/")
+        try:
+            file_path = safe_path.resolve(strict=True)
+            # Защита от выхода за пределы BASE_DIR
+            if not str(file_path).startswith(str(Path(BASE_DIR).resolve())):
+                self.send_error(403, "Forbidden")
+                return
+        except FileNotFoundError:
+            self.send_error(404, f"File not found: {path}")
+            return
+
+        if file_path.is_file():
+            self.serve_file(str(file_path))
         else:
-            file_path = os.path.join(BASE_DIR, path.lstrip("/"))
-            if os.path.isfile(file_path):
-                self.serve_file(file_path)
-            else:
-                self.send_error(404, f"File not found: {file_path}")
+            self.send_error(404, f"Not a file: {path}")
+
+    def do_HEAD(self):
+        """Поддержка HEAD-запросов (без тела ответа)"""
+        path = self.path
+
+        if path == "/":
+            self.send_response(200)
+            self.send_header("Content-type", "text/html; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            return
+
+        if path.startswith("/api/"):
+            self.send_response(200)
+            self.send_header("Content-type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            return
+
+        # Определяем Content-Type для статики по расширению
+        if path.endswith('.css'):
+            ct = 'text/css'
+        elif path.endswith('.js'):
+            ct = 'application/javascript'
+        elif path.endswith('.png') or path.endswith('.jpg') or path.endswith('.jpeg') or path.endswith('.gif'):
+            ct = 'image/' + path.rsplit('.', 1)[-1].lower()
+        else:
+            ct = 'application/octet-stream'
+
+        self.send_response(200)
+        self.send_header("Content-type", f"{ct}; charset=utf-8")
+        self.send_header("Cache-Control", "no-cache")
+        self.end_headers()
 
     def do_POST(self):
         if self.path == "/api/round-started":
@@ -226,34 +277,51 @@ class ScoresHandler(BaseHTTPRequestHandler):
             elif FINAL_INDEX >= 0:
                 FINAL_INDEX -= 1
             self.send_json({"ok": True, "final_index": FINAL_INDEX})
-            return  # ← не забудьте добавить return!
+            return
 
-        # Если ни один путь не совпал:
-        self.send_error(404)
+        self.send_error(404, "POST endpoint not found")
 
     def serve_file(self, path, content_type=None):
         try:
             if content_type is None:
-                if path.endswith('.css'): content_type = 'text/css'
-                elif path.endswith('.js'): content_type = 'application/javascript'
-                elif path.endswith('.png'): content_type = 'image/png'
-                else: content_type = 'text/plain'
+                if path.endswith('.css'):
+                    content_type = 'text/css'
+                elif path.endswith('.js'):
+                    content_type = 'application/javascript'
+                elif path.endswith(('.png', '.jpg', '.jpeg', '.gif')):
+                    ext = path.rsplit('.', 1)[-1].lower()
+                    content_type = f"image/{ext}"
+                else:
+                    content_type = 'text/plain'
+
             with open(path, 'rb') as f:
                 content = f.read()
+
             self.send_response(200)
             self.send_header("Content-type", f"{content_type}; charset=utf-8")
-            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            self.send_header("Pragma", "no-cache")
+            self.send_header("Expires", "0")
             self.end_headers()
             self.wfile.write(content)
+        except PermissionError:
+            self.send_error(403, "Permission denied")
         except Exception as e:
-            self.send_error(500, str(e))
+            self.send_error(500, f"Internal server error: {e}")
 
     def send_json(self, data):
-        self.send_response(200)
-        self.send_header("Content-type", "application/json; charset=utf-8")
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.end_headers()
-        self.wfile.write(json.dumps(data, ensure_ascii=False).encode("utf-8"))
+        try:
+            body = json.dumps(data, ensure_ascii=False).encode('utf-8')
+            self.send_response(200)
+            self.send_header("Content-type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        except Exception as e:
+            self.send_error(500, f"JSON encode error: {e}")
+
+
 
 def run_http_server():
     server = HTTPServer(("0.0.0.0", 8000), ScoresHandler)
