@@ -256,7 +256,7 @@ class ScoresHandler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps(data, ensure_ascii=False).encode("utf-8"))
 
 def run_http_server():
-    server = HTTPServer(("localhost", 8000), ScoresHandler)
+    server = HTTPServer(("0.0.0.0", 8000), ScoresHandler)
     print("✅ HTTP-сервер запущен: http://localhost:8000")
     server.serve_forever()
 
